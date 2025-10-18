@@ -52,6 +52,8 @@ actions!(
         HelixSubstitute,
         /// Delete the selection and enter edit mode, without yanking the selection.
         HelixSubstituteNoYank,
+        /// Go to the last character of the line.
+        HelixGotoLineEnd,
     ]
 );
 
@@ -74,6 +76,7 @@ pub fn register(editor: &mut Editor, cx: &mut Context<Vim>) {
     });
     Vim::action(editor, cx, Vim::helix_substitute);
     Vim::action(editor, cx, Vim::helix_substitute_no_yank);
+    Vim::action(editor, cx, Vim::helix_goto_line_end);
 }
 
 impl Vim {
@@ -657,6 +660,30 @@ impl Vim {
         cx: &mut Context<Self>,
     ) {
         self.do_helix_substitute(false, window, cx);
+    }
+
+    fn helix_goto_line_end(
+        &mut self,
+        _: &HelixGotoLineEnd,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.update_editor(cx, |_vim, editor, cx| {
+            editor.change_selections(Default::default(), window, cx, |s| {
+                s.move_with(|map, selection| {
+                    let cursor = selection.head();
+                    let line_end = map.next_line_boundary(cursor.to_point(map)).1;
+
+                    let display_point = if line_end.column() > 0 {
+                        movement::left(map, line_end)
+                    } else {
+                        line_end
+                    };
+
+                    selection.collapse_to(display_point, SelectionGoal::None);
+                });
+            });
+        });
     }
 }
 
@@ -1357,5 +1384,18 @@ mod test {
             "},
             Mode::Insert,
         );
+    }
+
+    #[gpui::test]
+    async fn test_helix_goto_within_line(cx: &mut gpui::TestAppContext) {
+        let mut cx = VimTestContext::new(cx, true).await;
+
+        cx.set_state("ˇ     foo bar", Mode::HelixNormal);
+        cx.simulate_keystrokes("g s");
+        cx.assert_state("     ˇfoo bar", Mode::HelixNormal);
+        cx.simulate_keystrokes("g h");
+        cx.assert_state("ˇ     foo bar", Mode::HelixNormal);
+        cx.simulate_keystrokes("g l");
+        cx.assert_state("     foo baˇr", Mode::HelixNormal);
     }
 }

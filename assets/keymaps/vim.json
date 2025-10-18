@@ -458,7 +458,7 @@
       // "shift-tab": "pane::ActivatePrevItem",
       "shift-h": "pane::ActivatePreviousItem",
       "shift-l": "pane::ActivateNextItem",
-      "g l": "vim::EndOfLine",
+      "g l": "vim::HelixGotoLineEnd",
       "g h": "vim::StartOfLine",
       "g s": "vim::FirstNonWhitespace", // "g s" default behavior is "space s"
       "g e": "vim::EndOfDocument",
